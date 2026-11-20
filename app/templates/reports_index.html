@@ -1,0 +1,10 @@
+{% extends "base.html" %}
+{% block body %}
+<div class="pagehead"><div><h1>Reports &amp; audit</h1><p class="sub">Read-only monthly reports, filterable by date range, exportable to CSV, Excel and PDF.</p></div></div>
+<form class="card form" method="get"><div class="grid">
+  <div><label>From</label><input type="date" name="start" value="{{ start }}"></div><div><label>To</label><input type="date" name="end" value="{{ end }}"></div></div>
+  <div class="btnrow"><button class="btn primary" type="submit">Set period</button></div></form>
+<div class="kpis">{% for l, v, s, tone in kpis %}<div class="kpi {{ tone }}"><div class="l">{{ l }}</div><div class="v">{{ v }}</div><div class="s">{{ s }}</div></div>{% endfor %}</div>
+{% for grp, items in groups.items() %}<div class="card"><h2>{{ grp }}</h2><div class="btnrow">
+  {% for slug, t in items %}<a class="btn" href="{{ url_for('reports.view', slug=slug, start=start, end=end) }}">{{ t }}</a>{% endfor %}</div></div>{% endfor %}
+{% endblock %}

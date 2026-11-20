@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+{% block body %}
+<div class="pagehead"><div><a href="{{ url_for('production.boms') }}">← BOMs</a><h1>{{ b.name }} <small class="sub">{{ b.code }}</small></h1>
+  <p class="sub">1 batch = {{ qty(b.expected_output_m) }} expected packets. Quantities are per batch; units are converted to each item's stock unit.</p></div></div>
+<div class="card"><div class="table-wrap"><table class="data"><thead><tr><th>Item</th><th>Kind</th><th class="num">Qty per batch</th><th>Unit</th><th class="num">= in stock unit</th>{% if can_edit %}<th></th>{% endif %}</tr></thead><tbody>
+{% for l in lines %}<tr><td>{{ l.name }}</td><td>{{ 'Raw material' if l.kind == 'RM' else 'Packaging' }}</td><td class="num">{{ qty(l.qty_m) }}</td><td>{{ l.unit }}</td><td class="num">{{ qty(l.qty_m) if l.unit == l.base_unit else '(converted: ' ~ l.base_unit ~ ')' }}</td>
+{% if can_edit %}<td><form method="post" action="{{ url_for('production.bom_item_delete', bom_id=b.id, item_id=l.item_id) }}" onsubmit="return confirm('Remove this line?')"><input type="hidden" name="_csrf" value="{{ csrf_token() }}"><button class="btn small danger">Remove</button></form></td>{% endif %}</tr>{% endfor %}</tbody></table></div></div>
+{% if can_edit %}<div class="two">
+<form method="post" action="{{ url_for('production.bom_item', bom_id=b.id) }}" class="card form"><input type="hidden" name="_csrf" value="{{ csrf_token() }}"><h3>Add / change a BOM line</h3>
+  <div class="grid"><div><label>Item</label><select name="item_id">{% for i in items %}<option value="{{ i.id }}">{{ i.name }} ({{ i.base_unit }})</option>{% endfor %}</select></div>
+  <div><label>Qty per batch</label><input type="number" name="qty" step="0.001" min="0.001" required></div>
+  <div><label>Unit</label><select name="unit">{% for u in units %}<option>{{ u }}</option>{% endfor %}</select></div></div><div class="btnrow"><button class="btn primary">Save line</button></div></form>
+<form method="post" action="{{ url_for('production.bom_update', bom_id=b.id) }}" class="card form"><input type="hidden" name="_csrf" value="{{ csrf_token() }}"><h3>BOM header</h3>
+  <div class="grid"><div><label>Name</label><input name="name" value="{{ b.name }}" required></div><div><label>Expected packets per batch</label><input type="number" name="expected" value="{{ qty(b.expected_output_m) }}" step="1" min="1" required></div></div>
+  <div class="btnrow"><button class="btn primary">Update</button></div></form></div>{% endif %}
+{% endblock %}

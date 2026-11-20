@@ -1,0 +1,55 @@
+{% set NUMERIC = ['money','qty','dec','pct','int'] %}
+
+{% macro cell(kind, v) -%}
+  {%- if kind == 'link' -%}<a href="{{ v[1] }}">{{ v[0] }}</a>
+  {%- elif kind == 'badge' -%}{% if v %}<span class="badge {{ v[1] }}">{{ v[0] }}</span>{% endif %}
+  {%- elif kind == 'mono' -%}{% if v %}<code class="mono">{{ v }}</code>{% endif %}
+  {%- elif kind == 'userform' -%}
+    <form method="post" class="inline" action="{{ url_for('admin.users') }}"><input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+      <input type="hidden" name="action" value="toggle"><input type="hidden" name="uid" value="{{ v[1] }}">
+      <button class="btn small" type="submit">{{ 'Disable' if v[2] else 'Enable' }}</button></form>
+    <form method="post" class="inline" action="{{ url_for('admin.users') }}"><input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+      <input type="hidden" name="action" value="reset"><input type="hidden" name="uid" value="{{ v[1] }}">
+      <input type="password" name="password" placeholder="new password" minlength="8" required><button class="btn small" type="submit">Reset</button></form>
+  {%- else -%}{{ fmt(kind, v) }}{%- endif -%}
+{%- endmacro %}
+
+{% macro table(cols, rows, empty='No records.', totals=None, flagcol=None) %}
+{% if rows %}
+<div class="table-wrap"><table class="data stack">
+  <thead><tr>{% for c in cols %}<th class="{{ 'num' if c[1] in NUMERIC }}">{{ c[0] }}</th>{% endfor %}</tr></thead>
+  <tbody>
+  {% for r in rows %}<tr>{% for c in cols %}<td data-label="{{ c[0] }}" class="{{ 'num' if c[1] in NUMERIC }}">{{ cell(c[1], r[loop.index0]) }}</td>{% endfor %}</tr>{% endfor %}
+  {% if totals %}<tr class="totals">{% for c in cols %}<td data-label="{{ c[0] }}" class="{{ 'num' if c[1] in NUMERIC }}">{{ cell(c[1], totals[loop.index0]) if totals[loop.index0] != '' else '' }}</td>{% endfor %}</tr>{% endif %}
+  </tbody></table></div>
+{% else %}<p class="note">{{ empty }}</p>{% endif %}
+{% endmacro %}
+
+{% macro form(f) %}
+<form method="post" action="{{ f.action }}" class="card form">
+  <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+  <h3>{{ f.title }}</h3>
+  <div class="grid">
+  {% for x in f.fields %}
+    {% if x.type == 'hidden' %}<input type="hidden" name="{{ x.name }}" value="{{ x.value }}">
+    {% else %}
+    <div><label for="f_{{ x.name }}">{{ x.label }}{% if x.required %} *{% endif %}</label>
+      {% if x.type == 'select' %}
+        <select id="f_{{ x.name }}" name="{{ x.name }}" {{ 'required' if x.required }}>{% for o in x.options %}<option value="{{ o[0] }}" {{ 'selected' if o[0]|string == x.value|string }}>{{ o[1] }}</option>{% endfor %}</select>
+      {% elif x.type == 'textarea' %}<textarea id="f_{{ x.name }}" name="{{ x.name }}" rows="2">{{ x.value }}</textarea>
+      {% else %}<input id="f_{{ x.name }}" type="{{ x.type }}" name="{{ x.name }}" value="{{ x.value }}" {{ 'required' if x.required }} {% if x.step %}step="{{ x.step }}"{% endif %} {% if x.min %}min="{{ x.min }}"{% endif %} autocomplete="off">
+      {% endif %}</div>
+    {% endif %}
+  {% endfor %}
+  </div>
+  <div class="btnrow"><button class="btn primary" type="submit">{{ f.submit or 'Save' }}</button></div>
+</form>
+{% endmacro %}
+
+{% macro stepper(status) %}
+{% set steps = ['submitted','approved','invoiced','dispatched'] %}
+{% if status in ['rejected','cancelled'] %}<div class="alert bad">This order is <b>{{ status }}</b>.</div>
+{% else %}
+<div class="stepper">{% for s in steps %}<div class="st {{ 'done' if loop.index0 < steps.index(status) else ('cur' if s == status else '') }}">{{ s|title }}</div>{% endfor %}</div>
+{% endif %}
+{% endmacro %}

@@ -1,0 +1,15 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sign in · Order-to-Audit</title><link rel="manifest" href="{{ url_for('static', filename='manifest.json') }}">
+<link rel="icon" href="{{ url_for('static', filename='icon.svg') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/app.css') }}"></head>
+<body><div class="login"><div class="box">
+<h1>Order-to-Audit</h1><p class="sub">Snacks manufacturing management system</p><br>
+{% with msgs = get_flashed_messages(with_categories=true) %}{% for cat, msg in msgs %}<div class="flash {{ cat }}">{{ msg }}</div>{% endfor %}{% endwith %}
+<form method="post"><input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+<label for="u">Username</label><input id="u" name="username" autocomplete="username" autocapitalize="none" required autofocus><br><br>
+<label for="p">Password</label><input id="p" type="password" name="password" autocomplete="current-password" required><br><br>
+<button class="btn primary" style="width:100%" type="submit">Sign in</button></form>
+<div class="demo"><b>Demo accounts</b> (password <code>Pass@123</code>)<br>
+<code>admin</code> · <code>salesman_a</code> · <code>salesman_b</code> · <code>production</code> · <code>accountant</code> · <code>owner</code></div>
+</div></div></body></html>

@@ -1,0 +1,61 @@
+{% extends "base.html" %}
+{% block body %}
+<div class="pagehead"><div><a href="{{ url_for('production.runs') }}">← Runs</a>
+  <h1>{{ r.run_no }} · {{ r.product_name }} <span class="badge {{ 'badge-green' if r.status == 'completed' else 'badge-blue' }}">{{ r.status|replace('_',' ')|title }}</span></h1>
+  <p class="sub">{{ r.run_date }} · {{ qty(r.batches_m) }} batch(es) · expected output {{ qty(r.expected_output_m) }} packets · tolerance {{ v.tolerance }}%</p></div></div>
+
+{% if v.any_flag %}<div class="alert bad"><b>⚠ Variance outside tolerance</b> - see flagged rows below.</div>{% endif %}
+
+<div class="card"><h2>Planned vs actual consumption</h2><div class="table-wrap"><table class="data"><thead><tr><th>Material</th><th>Unit</th><th class="num">Planned (BOM)</th><th class="num">Actual</th><th class="num">Variance</th><th class="num">Var %</th><th>Flag</th></tr></thead><tbody>
+{% for x in v.rows %}<tr class="{{ 'flag' if x.flagged }}"><td>{{ x.name }}</td><td>{{ x.unit }}</td><td class="num">{{ qty(x.planned_m) }}</td>
+  <td class="num">{{ qty(x.actual_m) if x.actual_m is not none else 'pending' }}</td><td class="num {{ 'neg' if x.flagged }}">{{ qty(x.var_m) if x.var_m is not none else '' }}</td>
+  <td class="num {{ 'neg' if x.flagged }}">{{ pctf(x.var_pct) if x.var_pct is not none else '' }}</td><td>{% if x.flagged %}<span class="badge badge-red">FLAGGED</span>{% elif x.pending %}<span class="badge badge-grey">pending</span>{% else %}<span class="badge badge-green">OK</span>{% endif %}</td></tr>{% endfor %}
+</tbody></table></div>
+<p class="note">Variance % = (actual − planned) ÷ planned × 100. Damaged packaging is included in actual packaging consumption.</p></div>
+
+{% if r.status == 'completed' %}
+<div class="card"><h2>Yield</h2><dl class="kv"><dt>Expected output</dt><dd>{{ qty(v.yield.expected_m) }} packets</dd><dt>Actual good output</dt><dd>{{ qty(v.yield.actual_m) }} packets</dd>
+  <dt>Yield variance</dt><dd class="{{ 'neg' if v.yield.flagged }}">{{ qty(v.yield.var_m) }} packets ({{ pctf(v.yield.var_pct) }}) {% if v.yield.flagged %}<span class="badge badge-red">FLAGGED</span>{% endif %}</dd>
+  <dt>Wastage %</dt><dd>{{ '%.2f' % v.yield.wastage_pct }}%</dd></dl></div>
+{% if waste %}<div class="card"><h2>Wastage &amp; scrap</h2>{{ m.table([('Type','text'),('Item','text'),('Qty','qty'),('Unit','text'),('Value at cost','money'),('Reason','text')], waste|map(attribute='kind')|zip(waste|map(attribute='item'), waste|map(attribute='qty_m'), waste|map(attribute='unit'), waste|map(attribute='value_paise'), waste|map(attribute='reason'))|list) }}</div>{% endif %}
+{% endif %}
+
+{% if can_edit and r.status == 'in_progress' %}
+<div class="two">
+<form method="post" action="{{ url_for('production.run_complete', run_id=r.id) }}" class="card form"><input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+  <h2>Record actual production</h2>
+  <div class="grid"><div><label>Actual good packets *</label><input type="number" name="good" id="good" min="0" step="1" required value="{{ qty(r.expected_output_m) }}"></div>
+  <div><label>Scrap (kg, optional)</label><input type="number" name="scrap" min="0" step="0.001" value="0"></div></div>
+  <div class="table-wrap"><table class="data"><thead><tr><th>Packaging</th><th class="num">Planned</th><th class="num">Used in good packets</th><th class="num">Damaged</th></tr></thead><tbody>
+  {% for iid, p in pk.items() %}<tr><td>{{ p.name }}</td><td class="num">{{ qty(p.planned_m) }}</td>
+    <td class="num"><input type="number" class="used" data-planned="{{ qty(p.planned_m) }}" name="used_{{ iid }}" min="0" step="1" value="{{ qty(p.planned_m) }}"></td>
+    <td class="num"><input type="number" name="dmg_{{ iid }}" min="0" step="1" value="0"></td></tr>{% endfor %}</tbody></table></div>
+  <p class="note">Used quantities are suggested from the BOM scaled by actual yield (rounded to whole pieces); overwrite if different. Damaged pieces are booked as wastage.</p>
+  <div class="btnrow"><button class="btn primary" type="submit">Save production</button></div></form>
+<form method="post" action="{{ url_for('production.run_issue', run_id=r.id) }}" class="card form"><input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+  <h3>Issue additional material</h3><div class="grid"><div><label>Material</label><select name="item_id">{% for i in rm_items %}<option value="{{ i.id }}">{{ i.name }} ({{ i.base_unit }})</option>{% endfor %}</select></div>
+  <div><label>Quantity</label><input type="number" name="qty" step="0.001" min="0.001" required></div></div><div class="btnrow"><button class="btn">Issue</button></div></form>
+</div>
+<script>(function(){const g=document.getElementById('good');const exp={{ qty(r.expected_output_m) }};g.addEventListener('input',()=>{document.querySelectorAll('.used').forEach(u=>{u.value=Math.round(+u.dataset.planned*(+g.value)/exp);});});})();</script>
+{% endif %}
+
+<div class="card"><h2>Product costing</h2>
+  <div class="table-wrap"><table class="data"><thead><tr><th>Cost line</th><th>Type</th><th class="num">Qty</th><th class="num">Avg rate ₹</th><th class="num">Value</th></tr></thead><tbody>
+  {% for l in cost.lines %}<tr><td>{{ l.name }}</td><td>{{ 'Raw material' if l.kind == 'RM' else 'Packaging' }}</td><td class="num">{{ qty(l.qty_m) }} {{ l.unit }}</td><td class="num">{{ l.rate }}</td><td class="num">{{ inr(l.value_paise) }}</td></tr>{% endfor %}
+  <tr class="totals"><td colspan="4">Materials + packaging</td><td class="num">{{ inr(cost.rm_paise + cost.pkg_paise) }}</td></tr>
+  <tr><td colspan="4">Labour</td><td class="num">{{ inr(cost.labour_paise) }}</td></tr><tr><td colspan="4">Gas &amp; power</td><td class="num">{{ inr(cost.gas_power_paise) }}</td></tr>
+  {% if cost.other_paise %}<tr><td colspan="4">Other</td><td class="num">{{ inr(cost.other_paise) }}</td></tr>{% endif %}
+  <tr class="totals"><td colspan="4">Total production cost</td><td class="num">{{ inr(cost.total_paise) }}</td></tr></tbody></table></div>
+  {% if cost.cost_per_packet is not none %}
+  <div class="kpis" style="margin-top:.8rem"><div class="kpi"><div class="l">Cost per packet</div><div class="v">₹{{ cost.cost_per_packet }}</div><div class="s">{{ inr(cost.total_paise) }} ÷ {{ qty(cost.good_m) }} good packets</div></div>
+  <div class="kpi"><div class="l">Selling price</div><div class="v">₹{{ '%.2f' % cost.selling_price }}</div><div class="s">before GST</div></div>
+  <div class="kpi {{ 'bad' if cost.margin_per_packet < 0 }}"><div class="l">Margin</div><div class="v">{{ pctf(cost.margin_pct) }}</div><div class="s">₹{{ cost.margin_per_packet }} per packet</div></div></div>{% endif %}
+  <p class="note"><b>Valuation:</b> {{ cost.valuation_method }}<br><b>Overhead rule:</b> {{ cost.overhead_rule }}</p></div>
+
+{% if can_edit %}<form method="post" action="{{ url_for('production.run_expense', run_id=r.id) }}" class="card form"><input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+  <h3>Add production overhead to this run</h3><div class="grid"><div><label>Category</label><select name="category"><option value="labour">Labour</option><option value="gas_power">Gas &amp; power</option><option value="electricity">Electricity</option><option value="other">Other</option></select></div>
+  <div><label>Amount ₹</label><input type="number" name="amount" step="0.01" min="0.01" required></div><div><label>Description</label><input name="description"></div></div>
+  <div class="btnrow"><button class="btn primary">Add overhead</button></div></form>{% endif %}
+{% if exp %}<div class="card"><h2>Overheads recorded</h2>{{ m.table([('Date','date'),('Category','text'),('Description','text'),('Amount','money')], exp|map(attribute='expense_date')|zip(exp|map(attribute='category'), exp|map(attribute='description'), exp|map(attribute='amount_paise'))|list) }}</div>{% endif %}
+<div class="card"><h2>Stock movements caused by this run</h2>{{ m.table([('Item','text'),('Transaction','text'),('Qty in','qty'),('Qty out','qty'),('Value','money'),('Ref','text')], moves|map(attribute='name')|zip(moves|map(attribute='txn_type'), moves|map(attribute='qty_in_m'), moves|map(attribute='qty_out_m'), moves|map(attribute='value_paise')|map('abs'), moves|map(attribute='ref_no'))|list) }}</div>
+{% endblock %}

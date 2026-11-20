@@ -1,0 +1,11 @@
+{% extends "base.html" %}
+{% block body %}
+<div class="pagehead"><div><h1>{{ title }}</h1><p class="sub">{{ subtitle }}</p></div>
+  <div class="btnrow">{% for label, url, primary in actions or [] %}<a class="btn {{ 'primary' if primary }}" href="{{ url }}">{{ label }}</a>{% endfor %}</div></div>
+<div class="kpis">{% for l, v, s, tone in kpis %}<div class="kpi {{ tone }}"><div class="l">{{ l }}</div><div class="v">{{ v }}</div><div class="s">{{ s }}</div></div>{% endfor %}</div>
+{% if bars %}<div class="card bars"><h2>{{ bars.title }}</h2>
+  {% set mx = (bars.data | map(attribute=1) | max) if bars.data else 1 %}
+  {% for n, v in bars.data %}<div class="row"><span>{{ n }}</span><span class="bar"><i style="width: {{ (v * 100 / mx) if mx else 0 }}%"></i></span><b>{{ inr(v) }}</b></div>
+  {% else %}<p class="note">No sales yet this month.</p>{% endfor %}</div>{% endif %}
+{% for s in sections %}<div class="card"><h2>{{ s.title }}</h2>{{ m.table(s.cols, s.rows, s.empty or 'No records.') }}</div>{% endfor %}
+{% endblock %}

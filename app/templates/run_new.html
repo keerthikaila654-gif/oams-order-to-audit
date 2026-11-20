@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+{% block body %}
+<div class="pagehead"><div><a href="{{ url_for('production.runs') }}">← Runs</a><h1>New production run</h1><p class="sub">Choose product and batch size; the BOM gives the expected requirement. Enter what was actually issued.</p></div></div>
+<form method="get" class="card form"><div class="grid">
+  <div><label>Product</label><select name="product_id" onchange="this.form.submit()">{% for p in products %}<option value="{{ p.id }}" {{ 'selected' if p.id == pid }}>{{ p.name }}</option>{% endfor %}</select></div>
+  <div><label>Batches (1 batch = {{ qty(req.bom.expected_output_m) if req else '–' }} packets)</label><input type="number" name="batches" value="{{ batches }}" min="0.001" step="0.001"></div></div>
+  <div class="btnrow"><button class="btn" type="submit">Calculate requirement</button></div></form>
+{% if req %}
+<form method="post" class="card form"><input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+  <input type="hidden" name="product_id" value="{{ pid }}"><input type="hidden" name="batches" value="{{ batches }}">
+  <h2>Raw materials to issue - {{ req.product.name }} × {{ batches }} batch(es) → expected {{ qty(req.expected_output_m) }} packets</h2>
+  <div class="table-wrap"><table class="data"><thead><tr><th>Material</th><th>Unit</th><th class="num">Standard (BOM)</th><th class="num">In stock</th><th class="num">Actual issued</th><th class="num">Variance</th></tr></thead><tbody>
+  {% for l in req.lines if l.kind == 'RM' %}
+  <tr><td>{{ l.name }}</td><td>{{ l.unit }}</td><td class="num">{{ qty(l.planned_m) }}</td><td class="num {{ 'neg' if l.stock_m < l.planned_m }}">{{ qty(l.stock_m) }}</td>
+    <td class="num"><input type="number" name="issue_{{ l.item_id }}" value="{{ qty(l.planned_m) }}" min="0" step="0.001" data-std="{{ qty(l.planned_m) }}" class="iss"></td><td class="num var">0.00%</td></tr>{% endfor %}
+  </tbody></table></div>
+  <p class="note">Packaging (pouches, cartons) is recorded when you enter the actual output. Variances above {{ '%g' % 3 }}% (configured tolerance) are flagged after saving.</p>
+  <div style="margin-top:.6rem"><label>Notes</label><input name="notes"></div>
+  <div class="btnrow"><button class="btn primary" type="submit">Create run &amp; issue materials</button></div></form>
+<script>document.querySelectorAll('.iss').forEach(i=>i.addEventListener('input',()=>{const s=+i.dataset.std,v=+i.value;const c=i.closest('tr').querySelector('.var');const p=s?((v-s)/s*100):0;c.textContent=(p>=0?'+':'')+p.toFixed(2)+'%';c.className='num var '+(Math.abs(p)>3?'neg':'');}));</script>
+{% endif %}
+{% endblock %}

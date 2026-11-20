@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#1f4e5f">
+<meta name="csrf-token" content="{{ csrf_token() }}">
+<link rel="manifest" href="{{ url_for('static', filename='manifest.json') }}">
+<link rel="icon" href="{{ url_for('static', filename='icon.svg') }}">
+<title>{% block title %}{{ title or 'Order-to-Audit' }}{% endblock %} · Order-to-Audit</title>
+<link rel="stylesheet" href="{{ url_for('static', filename='css/app.css') }}">
+</head>
+<body class="is-{{ role }}">
+{% import "_macros.html" as m with context %}
+<div class="shell">
+  <nav class="side" id="side">
+    <div class="brand">{{ company_name or 'Order-to-Audit' }}<small>Order-to-Audit Management</small></div>
+    {% for label, ep in nav %}<a href="{{ url_for(ep) }}" class="{{ 'active' if request.endpoint == ep }}">{{ label }}</a>{% endfor %}
+  </nav>
+  <div class="main">
+    <header class="topbar">
+      <button class="burger" onclick="document.getElementById('side').classList.toggle('open')" aria-label="Menu">☰</button>
+      <span class="who">Signed in as <b>{{ g.user.full_name }}</b><span class="role-pill">{{ g.user.role }}</span></span>
+      <form method="post" action="{{ url_for('auth.logout') }}"><input type="hidden" name="_csrf" value="{{ csrf_token() }}"><button class="btn small" type="submit">Log out</button></form>
+    </header>
+    <main class="content">
+      {% with msgs = get_flashed_messages(with_categories=true) %}{% for cat, msg in msgs %}<div class="flash {{ cat }}">{{ msg }}</div>{% endfor %}{% endwith %}
+      {% block body %}{% endblock %}
+    </main>
+  </div>
+</div>
+{% if role == 'salesman' %}
+<div class="bottomnav">{% for label, ep in nav %}<a href="{{ url_for(ep) }}" class="{{ 'active' if request.endpoint == ep }}">{{ label }}</a>{% endfor %}</div>
+{% endif %}
+{% block scripts %}{% endblock %}
+</body>
+</html>

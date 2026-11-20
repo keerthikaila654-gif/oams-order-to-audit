@@ -1,0 +1,14 @@
+{% extends "base.html" %}
+{% block body %}
+<div class="pagehead"><div><a href="{{ url_for('production.purchases') }}">← Purchases</a><h1>Record purchase / receipt</h1><p class="sub">Stock increases at the purchase rate. Units are converted to the item's stock unit (e.g. 500 g → 0.5 kg).</p></div></div>
+<form method="post" class="card form"><input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+  <div class="grid"><div><label>Supplier *</label><select name="supplier_id" required>{% for s in suppliers %}<option value="{{ s.id }}">{{ s.name }}</option>{% endfor %}</select></div>
+  <div><label>Supplier invoice no.</label><input name="supplier_invoice_no"></div><div><label>Date</label><input type="date" name="date" value="{{ today }}"></div></div>
+  <div class="table-wrap" style="margin-top:.8rem"><table class="data"><thead><tr><th>Item</th><th class="num">Qty</th><th>Unit</th><th class="num">Rate ₹ / unit</th><th>Batch</th><th>Expiry</th></tr></thead><tbody id="lines">
+  {% for n in range(3) %}<tr class="ln"><td><select name="item_id">{% for i in items %}<option value="{{ i.id }}" data-unit="{{ i.base_unit }}">{{ i.name }}</option>{% endfor %}</select></td>
+    <td><input type="number" name="qty" step="0.001" min="0"></td><td><select name="unit">{% for u in units %}<option>{{ u }}</option>{% endfor %}</select></td>
+    <td><input type="number" name="rate" step="0.01" min="0"></td><td><input name="batch"></td><td><input type="date" name="expiry"></td></tr>{% endfor %}</tbody></table></div>
+  <div class="btnrow"><button type="button" class="btn" onclick="var t=document.querySelector('.ln');document.getElementById('lines').appendChild(t.cloneNode(true))">+ Add line</button><button class="btn primary" type="submit">Record purchase</button></div></form>
+<script>document.addEventListener('change',e=>{if(e.target.name==='item_id'){const u=e.target.selectedOptions[0].dataset.unit;const s=e.target.closest('tr').querySelector('select[name=unit]');[...s.options].forEach(o=>{if(o.value===u)s.value=u;});}});
+document.querySelectorAll('.ln').forEach(tr=>{const s=tr.querySelector('select[name=item_id]');s.dispatchEvent(new Event('change',{bubbles:true}));});</script>
+{% endblock %}

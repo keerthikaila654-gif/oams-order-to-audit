@@ -1,0 +1,53 @@
+{% extends "base.html" %}
+{% block body %}
+<div class="pagehead"><div><a href="{{ url_for('admin.orders') if admin else url_for('salesman.orders') }}">← Orders</a>
+  <h1>{{ o.order_no }} <span class="badge {{ status_class[o.status] }}">{{ o.status|title }}</span></h1>
+  <p class="sub">{{ o.customer_name }} · {{ o.customer_type }} · {{ o.customer_state }} · {{ o.order_date }}{% if admin %} · by {{ o.salesman_name }}{% endif %}</p></div></div>
+{{ m.stepper(o.status) }}
+{% if o.reject_reason %}<div class="alert bad">Reason: {{ o.reject_reason }}</div>{% endif %}
+
+{% if chk and not chk.ok %}
+<div class="alert bad"><b>⚠ Insufficient finished-goods stock.</b> This order cannot be approved or dispatched as it stands.
+  {% for r in chk.rows if r.shortage_m %}<br>{{ r.product_name }}: ordered {{ qty(r.ordered_m) }}, available {{ qty(r.available_m) }} → <b>shortage {{ qty(r.shortage_m) }} packets</b>{% endfor %}</div>
+{% elif chk %}<div class="alert ok">✔ Stock available for every line.</div>{% endif %}
+
+{% if admin and o.status == 'submitted' %}
+<form method="post" action="{{ url_for('admin.order_edit', order_id=o.id) }}" class="card form"><input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+  <h2>Order lines (editable)</h2>
+  <div class="table-wrap"><table class="data"><thead><tr><th>Product</th><th class="num">Qty</th><th class="num">Price ₹</th><th class="num">Available</th><th class="num">Shortage</th></tr></thead><tbody>
+  {% for it in items %}{% set c = chk.rows[loop.index0] %}
+  <tr class="{{ 'shortage' if c.shortage_m }}"><td>{{ it.product_name }}</td>
+    <td class="num"><input type="number" name="qty_{{ it.product_id }}" value="{{ qty(it.qty_m) }}" min="0" step="1"></td>
+    <td class="num"><input type="number" name="price_{{ it.product_id }}" value="{{ '%.2f' % (it.price_paise / 100) }}" min="0" step="0.01"></td>
+    <td class="num">{{ qty(c.available_m) }}</td><td class="num {{ 'neg' if c.shortage_m }}">{{ qty(c.shortage_m) if c.shortage_m else '–' }}</td></tr>{% endfor %}
+  </tbody></table></div>
+  <p class="note">Set a quantity to 0 to remove a line. Every edit is written to the audit log with old and new values.</p>
+  <div class="btnrow"><button class="btn" type="submit">Save changes &amp; re-check stock</button></div></form>
+{% else %}
+<div class="card"><h2>Order lines</h2><div class="table-wrap"><table class="data"><thead><tr><th>Product</th><th class="num">Qty</th><th class="num">Price</th><th class="num">Value</th>{% if chk %}<th class="num">Available</th><th class="num">Shortage</th>{% endif %}</tr></thead><tbody>
+  {% for it in items %}<tr><td>{{ it.product_name }}</td><td class="num">{{ qty(it.qty_m) }}</td><td class="num">{{ inr(it.price_paise) }}</td>
+    <td class="num">{{ inr((it.qty_m * it.price_paise / 1000)|round|int) }}</td>
+    {% if chk %}<td class="num">{{ qty(chk.rows[loop.index0].available_m) }}</td><td class="num {{ 'neg' if chk.rows[loop.index0].shortage_m }}">{{ qty(chk.rows[loop.index0].shortage_m) if chk.rows[loop.index0].shortage_m else '–' }}</td>{% endif %}</tr>{% endfor %}
+  </tbody></table></div></div>
+{% endif %}
+
+{% if preview %}<div class="card"><h2>GST preview - place of supply: {{ o.customer_state }}</h2>
+  <dl class="kv"><dt>Tax type if invoiced</dt><dd><span class="badge {{ 'badge-blue' if preview.tax_type == 'INTRA' else 'badge-purple' }}">{{ preview.label }}</span></dd>
+  <dt>Taxable value</dt><dd>{{ inr(preview.taxable_paise) }}</dd>
+  {% if preview.tax_type == 'INTRA' %}<dt>CGST</dt><dd>{{ inr(preview.cgst_paise) }}</dd><dt>SGST</dt><dd>{{ inr(preview.sgst_paise) }}</dd>
+  {% else %}<dt>IGST</dt><dd>{{ inr(preview.igst_paise) }}</dd>{% endif %}
+  <dt>Invoice total</dt><dd><b>{{ inr(preview.total_paise) }}</b></dd></dl></div>{% endif %}
+
+{% if admin %}<div class="card"><h2>Actions</h2><div class="btnrow">
+  {% if o.status == 'submitted' %}
+  <form method="post" action="{{ url_for('admin.order_approve', order_id=o.id) }}"><input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+    <button class="btn primary" {{ 'disabled' if chk and not chk.ok }}>Approve order</button></form>{% endif %}
+  {% if o.status == 'approved' %}<form method="post" action="{{ url_for('admin.order_invoice', order_id=o.id) }}"><input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+    <button class="btn primary">Generate GST invoice</button></form>{% endif %}
+  {% if o.status in ['submitted','approved'] %}<form method="post" action="{{ url_for('admin.order_reject', order_id=o.id) }}" class="inline"><input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+    <input name="reason" placeholder="Reason for rejection" required><button class="btn danger">Reject</button></form>{% endif %}
+  {% if inv %}<a class="btn" href="{{ url_for('admin.invoice', invoice_id=inv.id) }}">Open invoice {{ inv.invoice_no }}</a>{% endif %}
+</div>{% if chk and not chk.ok %}<p class="note">Approval is disabled while there is a shortage. Reduce the quantity above, or reject the order.</p>{% endif %}</div>
+{% elif inv %}<div class="card"><h2>Invoice</h2><p>{{ inv.invoice_no }} · {{ inv.invoice_date }} · <b>{{ inr(inv.total_paise) }}</b> (incl. GST)</p>
+  {% if disp %}{% for d in disp %}<p class="note">{{ d.description }}: dispatched {{ qty(d.dispatched_m) }} of {{ qty(d.invoiced_m) }}</p>{% endfor %}{% endif %}</div>{% endif %}
+{% endblock %}

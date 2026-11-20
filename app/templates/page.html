@@ -1,0 +1,10 @@
+{% extends "base.html" %}
+{% block body %}
+<div class="pagehead"><div>{% if back %}<a href="{{ back }}">← Back</a>{% endif %}<h1>{{ title }}</h1><p class="sub">{{ subtitle }}</p></div>
+  <div class="btnrow">{% for label, url, primary in actions or [] %}<a class="btn {{ 'primary' if primary }}" href="{{ url }}">{{ label }}</a>{% endfor %}</div></div>
+{% if filters %}<div class="chips">{% for v, l in filters %}<a class="chip {{ 'on' if v == filter_value }}" href="?{{ filter_name }}={{ v }}">{{ l }}</a>{% endfor %}</div>{% endif %}
+{% for f in forms or [] %}{{ m.form(f) }}{% endfor %}
+{% if cols %}<div class="card">{% if table_title %}<h2>{{ table_title }}</h2>{% endif %}{{ m.table(cols, rows, empty or 'No records.') }}</div>{% endif %}
+{% if cols2 %}<div class="card"><h2>{{ table2_title }}</h2>{{ m.table(cols2, rows2) }}</div>{% endif %}
+{% if note %}<p class="note">{{ note }}</p>{% endif %}
+{% endblock %}

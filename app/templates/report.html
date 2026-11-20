@@ -1,0 +1,13 @@
+{% extends "base.html" %}
+{% block body %}
+<div class="pagehead"><div><a href="{{ url_for('reports.index') }}">← All reports</a><h1>{{ rep.title }}</h1><p class="sub">{{ start }} to {{ end }}</p></div>
+  <div class="btnrow">
+    {% for f, l in [('csv','CSV'),('xlsx','Excel'),('pdf','PDF')] %}
+    <a class="btn" href="{{ url_for('reports.view', slug=slug, start=start, end=end, item=item_id, fmt=f) }}">⬇ {{ l }}</a>{% endfor %}</div></div>
+<form class="card form" method="get"><div class="grid">
+  <div><label>From</label><input type="date" name="start" value="{{ start }}"></div>
+  <div><label>To</label><input type="date" name="end" value="{{ end }}"></div>
+  {% if filters_item %}<div><label>Item</label><select name="item"><option value="">All items</option>{% for i in items %}<option value="{{ i.id }}" {{ 'selected' if i.id == item_id }}>{{ i.name }}</option>{% endfor %}</select></div>{% endif %}
+</div><div class="btnrow"><button class="btn primary" type="submit">Apply</button></div></form>
+<div class="card">{{ m.table(rep.columns, rep.rows, 'No records in this period.', rep.totals) }}{% if rep.note %}<p class="note">{{ rep.note }}</p>{% endif %}</div>
+{% endblock %}

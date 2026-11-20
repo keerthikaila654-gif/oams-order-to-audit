@@ -1,0 +1,7 @@
+{% extends "base.html" %}
+{% block body %}
+<div class="pagehead"><div><h1>Stock summary</h1><p class="sub">Balances are summed from the stock ledger, never typed in. Valued at weighted-average cost.</p></div>
+  <a class="btn" href="{{ url_for('shared.ledger') }}">Open stock ledger</a></div>
+{% if problems %}<div class="alert bad">Integrity check failed: {{ problems|join('; ') }}</div>{% else %}<div class="alert ok">Ledger reconciliation OK - no negative balances.</div>{% endif %}
+{% for g_ in groups %}<div class="card"><h2>{{ g_.title }}</h2>{{ m.table(g_.cols, g_.rows) }}</div>{% endfor %}
+{% endblock %}

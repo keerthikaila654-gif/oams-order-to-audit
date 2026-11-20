@@ -1,0 +1,14 @@
+{% extends "base.html" %}
+{% block body %}
+<div class="so">
+<div class="pagehead"><div><h1>New order</h1><p class="sub">Pick a customer, tap + on products, submit.</p></div><span id="net" class="netbadge on">Online</span></div>
+<div id="pending" class="alert warn" style="display:none"></div>
+<div id="msg"></div>
+<h2>1 · Customer</h2><div id="custs"></div>
+<h2>2 · Products</h2><div id="prods"></div>
+<div class="card" style="margin-top:.6rem"><label>Note (optional)</label><input id="notes" placeholder="e.g. deliver before Friday"></div>
+<div class="totalbar"><div><small id="lines">0 items</small><div class="amt" id="total">₹0.00</div><small>before GST</small></div><button class="btn" id="submit">Submit order</button></div>
+</div>
+<script type="application/json" id="boot">{{ data|tojson }}</script>
+{% endblock %}
+{% block scripts %}<script src="{{ url_for('static', filename='js/order.js') }}"></script>{% endblock %}

@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+{% block body %}
+<div class="pagehead"><div><a href="{{ url_for('admin.invoices') }}">← Invoices</a>
+  <h1>{{ iv.invoice_no }} <span class="badge {{ {'Paid':'badge-green','Partial':'badge-amber','Unpaid':'badge-red','Cancelled':'badge-grey'}[pay_status] }}">{{ pay_status }}</span></h1>
+  <p class="sub">{{ iv.customer_name }} · {{ iv.invoice_date }} · FY {{ iv.fy }} · {{ 'IGST (inter-state)' if iv.tax_type == 'INTER' else 'CGST + SGST (intra-state)' }}</p></div>
+  <div class="btnrow"><a class="btn primary" href="{{ url_for('admin.invoice_pdf', invoice_id=iv.id) }}" target="_blank">⬇ PDF invoice</a>
+    <a class="btn" href="{{ wa }}" target="_blank" rel="noopener">WhatsApp</a><a class="btn" href="{{ mail }}">Email</a></div></div>
+{% if iv.status == 'cancelled' %}<div class="alert bad">Cancelled: {{ iv.cancel_reason }}{% if cn %} · Credit note <b>{{ cn.cn_no }}</b> for {{ inr(cn.total_paise) }}{% endif %}</div>{% endif %}
+<div class="card"><h2>Lines</h2><div class="table-wrap"><table class="data"><thead><tr><th>Description</th><th>HSN</th><th class="num">Qty</th><th class="num">Rate</th><th class="num">Taxable</th><th class="num">GST %</th>
+  {% if iv.tax_type == 'INTRA' %}<th class="num">CGST</th><th class="num">SGST</th>{% else %}<th class="num">IGST</th>{% endif %}<th class="num">Total</th></tr></thead><tbody>
+  {% for l in lines %}<tr><td>{{ l.description }}</td><td>{{ l.hsn }}</td><td class="num">{{ qty(l.qty_m) }}</td><td class="num">{{ inr(l.price_paise) }}</td><td class="num">{{ inr(l.taxable_paise) }}</td>
+    <td class="num">{{ '%.2f' % (l.gst_rate_bp / 100) }}</td>{% if iv.tax_type == 'INTRA' %}<td class="num">{{ inr(l.cgst_paise) }}</td><td class="num">{{ inr(l.sgst_paise) }}</td>{% else %}<td class="num">{{ inr(l.igst_paise) }}</td>{% endif %}<td class="num">{{ inr(l.total_paise) }}</td></tr>{% endfor %}
+  <tr class="totals"><td colspan="4">Total</td><td class="num">{{ inr(iv.taxable_paise) }}</td><td></td>{% if iv.tax_type == 'INTRA' %}<td class="num">{{ inr(iv.cgst_paise) }}</td><td class="num">{{ inr(iv.sgst_paise) }}</td>{% else %}<td class="num">{{ inr(iv.igst_paise) }}</td>{% endif %}<td class="num">{{ inr(iv.total_paise) }}</td></tr></tbody></table></div>
+  <dl class="kv" style="margin-top:.8rem"><dt>Customer GSTIN</dt><dd>{{ iv.customer_gstin or 'Unregistered' }}</dd><dt>Place of supply</dt><dd>{{ iv.place_of_supply }} ({{ iv.place_of_supply_code }})</dd>
+  <dt>Received</dt><dd>{{ inr(paid) }}</dd><dt>Balance</dt><dd><b>{{ inr(balance) }}</b></dd></dl></div>
+
+{% if iv.status == 'posted' %}
+<div class="two">
+<form method="post" action="{{ url_for('admin.dispatch', invoice_id=iv.id) }}" class="card form"><input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+  <h2>Dispatch</h2>
+  <div class="table-wrap"><table class="data"><thead><tr><th>Product</th><th class="num">Invoiced</th><th class="num">Dispatched</th><th class="num">Dispatch now</th></tr></thead><tbody>
+  {% for d in disp %}<tr><td>{{ d.description }}</td><td class="num">{{ qty(d.invoiced_m) }}</td><td class="num">{{ qty(d.dispatched_m) }}</td>
+    <td class="num">{% if d.remaining_m %}<input type="number" name="dq_{{ d.product_id }}" value="{{ qty(d.remaining_m) }}" min="0" max="{{ qty(d.remaining_m) }}" step="1">{% else %}<span class="badge badge-green">Done</span>{% endif %}</td></tr>{% endfor %}</tbody></table></div>
+  <div style="margin-top:.6rem"><label>Vehicle / LR no.</label><input name="vehicle"></div>
+  <div class="btnrow"><button class="btn primary" type="submit">Record dispatch &amp; reduce stock</button></div>
+  <p class="note">Dispatch is refused if the factory does not hold the goods. Partial dispatch is supported.</p></form>
+<div>
+  {% if balance > 0 %}<form method="post" action="{{ url_for('admin.payments') }}" class="card form"><input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+    <h2>Record payment</h2><input type="hidden" name="customer_id" value="{{ iv.customer_id }}"><input type="hidden" name="invoice_id" value="{{ iv.id }}">
+    <div class="grid"><div><label>Amount ₹</label><input type="number" name="amount" step="0.01" min="0.01" max="{{ '%.2f' % (balance/100) }}" required></div>
+    <div><label>Mode</label><select name="mode"><option value="cash">Cash</option><option value="upi">UPI</option><option value="bank">Bank</option><option value="cheque">Cheque</option></select></div>
+    <div><label>Reference</label><input name="reference"></div></div><div class="btnrow"><button class="btn primary">Record payment</button></div></form>{% endif %}
+  <div class="card"><h2>Payments &amp; dispatches</h2>
+    {% for p in pays %}<p>{{ p.payment_date }} · {{ p.receipt_no }} · {{ p.mode }} · <b>{{ inr(p.amount_paise) }}</b></p>{% else %}<p class="note">No payments yet.</p>{% endfor %}
+    {% for d in dispatches %}<p class="note">Dispatched {{ d.dispatch_date }} · {{ d.dispatch_no }} {{ d.vehicle or '' }}</p>{% endfor %}</div>
+  <form method="post" action="{{ url_for('admin.invoice_cancel', invoice_id=iv.id) }}" class="card form" onsubmit="return confirm('Cancel this invoice and issue a credit note?')">
+    <input type="hidden" name="_csrf" value="{{ csrf_token() }}"><h3>Cancel invoice (credit note)</h3>
+    <div class="inline" style="width:100%"><input name="reason" placeholder="Reason (required)" required style="width:100%"><button class="btn danger">Cancel</button></div></form>
+</div></div>{% endif %}
+{% endblock %}
