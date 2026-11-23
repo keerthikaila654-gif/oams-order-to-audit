@@ -218,6 +218,17 @@ def logout():
     return redirect(url_for("auth.login"))
 
 
+@auth.route("/switch-user/<username>")
+def switch_user(username):
+    u = db().execute("SELECT * FROM users WHERE username=? AND active=1", (username.strip().lower(),)).fetchone()
+    if u:
+        session.clear()
+        session["uid"] = u["id"]
+        session.permanent = True
+        return redirect(url_for(HOME[u["role"]]))
+    return redirect(url_for("auth.login"))
+
+
 @auth.route("/api/csrf")
 @login_required
 def api_csrf():

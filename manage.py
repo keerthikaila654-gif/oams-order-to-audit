@@ -15,7 +15,7 @@ from app.db import connect
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("cmd", choices=["reset", "benchmark", "run", "verify"])
+    ap.add_argument("cmd", choices=["reset", "benchmark", "run", "verify", "demo"])
     ap.add_argument("--port", type=int, default=int(os.environ.get("PORT", 5000)))
     ap.add_argument("--host", default=os.environ.get("HOST", "0.0.0.0"))
     ap.add_argument("--export", action="store_true", help="write all reports to ./exports (benchmark)")
@@ -26,7 +26,12 @@ def main():
     if a.cmd == "run":
         if not os.path.exists(path):
             reset_database(path)
-            print("Database created and seeded with benchmark master data.")
+            conn = connect(path)
+            from app import benchmark
+            benchmark.run_benchmark(conn, log=lambda *_: None)
+            from app.seed_extra import seed_extra
+            seed_extra(conn)
+            print("Database created and seeded with benchmark & comprehensive sample data.")
         app.run(host=a.host, port=a.port, debug=False)
         return
 
@@ -36,11 +41,15 @@ def main():
         return
 
     from app import benchmark
-    if a.cmd == "benchmark":
+    if a.cmd in ("benchmark", "demo"):
         reset_database(path)
     conn = connect(path)
-    if a.cmd == "benchmark":
+    if a.cmd in ("benchmark", "demo"):
         benchmark.run_benchmark(conn)
+        if a.cmd == "demo":
+            from app.seed_extra import seed_extra
+            seed_extra(conn)
+            print("\nComprehensive demo data loaded across all modules.")
         if a.export:
             from app.services import exports
             n = exports.export_all(conn, "exports")

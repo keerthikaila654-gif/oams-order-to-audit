@@ -1,0 +1,22 @@
+{
+  "hosting": {
+    "public": "app/static",
+    "cleanUrls": true,
+    "ignore": [
+      "firebase.json",
+      "**/.*",
+      "**/node_modules/**",
+      "**/*.pyc",
+      "**/__pycache__/**"
+    ],
+    "rewrites": [
+      {
+        "source": "**",
+        "run": {
+          "serviceId": "oams-app",
+          "region": "asia-south1"
+        }
+      }
+    ]
+  }
+}

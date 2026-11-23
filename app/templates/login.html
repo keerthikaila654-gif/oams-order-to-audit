@@ -1,15 +1,74 @@
 <!doctype html>
-<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Sign in · Order-to-Audit</title><link rel="manifest" href="{{ url_for('static', filename='manifest.json') }}">
-<link rel="icon" href="{{ url_for('static', filename='icon.svg') }}">
-<link rel="stylesheet" href="{{ url_for('static', filename='css/app.css') }}"></head>
-<body><div class="login"><div class="box">
-<h1>Order-to-Audit</h1><p class="sub">Snacks manufacturing management system</p><br>
-{% with msgs = get_flashed_messages(with_categories=true) %}{% for cat, msg in msgs %}<div class="flash {{ cat }}">{{ msg }}</div>{% endfor %}{% endwith %}
-<form method="post"><input type="hidden" name="_csrf" value="{{ csrf_token() }}">
-<label for="u">Username</label><input id="u" name="username" autocomplete="username" autocapitalize="none" required autofocus><br><br>
-<label for="p">Password</label><input id="p" type="password" name="password" autocomplete="current-password" required><br><br>
-<button class="btn primary" style="width:100%" type="submit">Sign in</button></form>
-<div class="demo"><b>Demo accounts</b> (password <code>Pass@123</code>)<br>
-<code>admin</code> · <code>salesman_a</code> · <code>salesman_b</code> · <code>production</code> · <code>accountant</code> · <code>owner</code></div>
-</div></div></body></html>
+<html lang="en">
+
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Sign in · Order-to-Audit ERP</title>
+  <link rel="manifest" href="{{ url_for('static', filename='manifest.json') }}">
+  <link rel="icon" href="{{ url_for('static', filename='icon.svg') }}">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link
+    href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap"
+    rel="stylesheet">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/app.css') }}">
+</head>
+
+<body>
+  <div class="login">
+    <div class="box">
+      <div style="text-align: center; margin-bottom: 1rem;">
+        <div
+          style="display: inline-flex; width: 48px; height: 48px; border-radius: 12px; background: linear-gradient(135deg, #0284c7, #0369a1); color: #fff; align-items: center; justify-content: center; font-size: 1.6rem; box-shadow: 0 4px 12px rgba(2, 132, 199, 0.35); margin-bottom: 0.65rem;">
+          📦</div>
+        <h1>Order-to-Audit</h1>
+        <p class="sub">Integrated Snacks Manufacturing & GST System</p>
+      </div>
+
+      {% with msgs = get_flashed_messages(with_categories=true) %}
+      {% for cat, msg in msgs %}
+      <div class="flash {{ cat }}">{{ msg }}</div>
+      {% endfor %}
+      {% endwith %}
+
+      <form method="post" id="loginForm">
+        <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+        <div style="margin-bottom: 0.85rem;">
+          <label for="u">Username</label>
+          <input id="u" name="username" autocomplete="username" autocapitalize="none" placeholder="Enter username"
+            required autofocus>
+        </div>
+        <div style="margin-bottom: 1.25rem;">
+          <label for="p">Password</label>
+          <input id="p" type="password" name="password" autocomplete="current-password" placeholder="Enter password"
+            required>
+        </div>
+        <button class="btn primary" style="width:100%; padding: 0.7rem 1rem; font-size: 0.95rem;" type="submit">Sign
+          in</button>
+      </form>
+
+      <div class="demo">
+        <div class="demo-title">⚡ Quick Demo Login (Click to Autofill)</div>
+        <div class="demo-chips">
+          <button type="button" class="demo-chip" onclick="fillUser('admin')">👑 admin</button>
+          <button type="button" class="demo-chip" onclick="fillUser('salesman_a')">📱 salesman_a</button>
+          <button type="button" class="demo-chip" onclick="fillUser('salesman_b')">📱 salesman_b</button>
+          <button type="button" class="demo-chip" onclick="fillUser('production')">🏭 production</button>
+          <button type="button" class="demo-chip" onclick="fillUser('accountant')">📊 accountant</button>
+          <button type="button" class="demo-chip" onclick="fillUser('owner')">💼 owner</button>
+        </div>
+        <div class="demo-note">Default password for all accounts: <code>Pass@123</code></div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    function fillUser(name) {
+      document.getElementById('u').value = name;
+      document.getElementById('p').value = 'Pass@123';
+    }
+  </script>
+</body>
+
+</html>

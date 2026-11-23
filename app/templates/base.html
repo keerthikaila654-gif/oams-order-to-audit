@@ -1,37 +1,170 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" data-theme="light">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="theme-color" content="#1f4e5f">
+<meta name="theme-color" content="#0f172a">
 <meta name="csrf-token" content="{{ csrf_token() }}">
 <link rel="manifest" href="{{ url_for('static', filename='manifest.json') }}">
 <link rel="icon" href="{{ url_for('static', filename='icon.svg') }}">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <title>{% block title %}{{ title or 'Order-to-Audit' }}{% endblock %} · Order-to-Audit</title>
 <link rel="stylesheet" href="{{ url_for('static', filename='css/app.css') }}">
+<script>
+  // Instant theme apply before render to prevent flash
+  (function() {
+    const saved = localStorage.getItem('oams_theme');
+    if (saved) {
+      document.documentElement.setAttribute('data-theme', saved);
+    } else if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+      document.documentElement.setAttribute('data-theme', 'dark');
+    }
+  })();
+</script>
 </head>
 <body class="is-{{ role }}">
 {% import "_macros.html" as m with context %}
+
+{% set nav_icons = {
+  'Dashboard': '📊',
+  'Orders': '🛍️',
+  'Invoices': '🧾',
+  'Payments': '💳',
+  'Customers': '👥',
+  'Products': '🏷️',
+  'Stock': '📦',
+  'Stock ledger': '📑',
+  'Reports': '📈',
+  'Users': '🛡️',
+  'Settings': '⚙️',
+  'Audit log': '📜',
+  'Benchmark check': '🎯',
+  'Production runs': '🏭',
+  'New run': '➕',
+  'BOMs': '🧪',
+  'Purchases': '🛒',
+  'Suppliers': '🏬',
+  'Items & adjustments': '⚖️',
+  'Home': '🏠',
+  'New order': '📝',
+  'My orders': '📦'
+} %}
+
 <div class="shell">
   <nav class="side" id="side">
-    <div class="brand">{{ company_name or 'Order-to-Audit' }}<small>Order-to-Audit Management</small></div>
-    {% for label, ep in nav %}<a href="{{ url_for(ep) }}" class="{{ 'active' if request.endpoint == ep }}">{{ label }}</a>{% endfor %}
+    <div class="brand">
+      <div class="brand-logo">
+        <span class="brand-icon">🍘</span>
+        <div>
+          <span class="brand-title">{{ company_name or 'Kaveri Snacks' }}</span>
+          <span class="brand-sub">Order-to-Audit ERP</span>
+        </div>
+      </div>
+      <div class="brand-badge">
+        <span class="pulse-dot"></span>
+        <span>Online · FY 2026-27</span>
+      </div>
+    </div>
+
+    <div class="side-nav-group">
+      {% for label, ep in nav %}
+        <a href="{{ url_for(ep) }}" class="{{ 'active' if request.endpoint == ep }}">
+          <span class="nav-icon">{{ nav_icons.get(label, '🔹') }}</span>
+          <span class="nav-label">{{ label }}</span>
+        </a>
+      {% endfor %}
+    </div>
+
+    <div class="side-footer">
+      <div class="side-user-card">
+        <div class="user-avatar-small">{{ g.user.full_name[:2]|upper }}</div>
+        <div class="side-user-text">
+          <div class="side-user-name">{{ g.user.full_name }}</div>
+          <div class="side-user-role">{{ g.user.role|capitalize }}</div>
+        </div>
+      </div>
+    </div>
   </nav>
+
   <div class="main">
     <header class="topbar">
-      <button class="burger" onclick="document.getElementById('side').classList.toggle('open')" aria-label="Menu">☰</button>
-      <span class="who">Signed in as <b>{{ g.user.full_name }}</b><span class="role-pill">{{ g.user.role }}</span></span>
-      <form method="post" action="{{ url_for('auth.logout') }}"><input type="hidden" name="_csrf" value="{{ csrf_token() }}"><button class="btn small" type="submit">Log out</button></form>
+      <div class="topbar-left">
+        <button class="burger" onclick="document.getElementById('side').classList.toggle('open')" aria-label="Menu">☰</button>
+        <div class="live-pill">
+          <span class="pulse-dot"></span>
+          <span class="live-pill-text">TN GST <b>33ABCDE1234F1Z5</b></span>
+        </div>
+      </div>
+
+      <div class="topbar-right">
+        <!-- Quick Role Switcher -->
+        <div class="role-switcher">
+          <span class="role-switcher-title">Switch Role:</span>
+          <a href="{{ url_for('auth.switch_user', username='admin') }}" class="role-pill-btn {{ 'active' if g.user.username == 'admin' }}" title="Admin factory desk">Admin</a>
+          <a href="{{ url_for('auth.switch_user', username='salesman_a') }}" class="role-pill-btn {{ 'active' if g.user.username == 'salesman_a' }}" title="Salesman A (Mobile PWA)">Sales A</a>
+          <a href="{{ url_for('auth.switch_user', username='production') }}" class="role-pill-btn {{ 'active' if g.user.username == 'production' }}" title="Production supervisor">Production</a>
+          <a href="{{ url_for('auth.switch_user', username='accountant') }}" class="role-pill-btn {{ 'active' if g.user.username == 'accountant' }}" title="Accountant / Auditor">Auditor</a>
+          <a href="{{ url_for('auth.switch_user', username='owner') }}" class="role-pill-btn {{ 'active' if g.user.username == 'owner' }}" title="Owner live dashboard">Owner</a>
+        </div>
+
+        <!-- Dark / Light Theme Toggle Button -->
+        <button type="button" class="theme-btn" id="themeToggleBtn" onclick="toggleTheme()" title="Switch Light/Dark Theme">
+          <span id="themeIcon">🌙</span>
+        </button>
+
+        <form method="post" action="{{ url_for('auth.logout') }}">
+          <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+          <button class="btn small logout-btn" type="submit">Sign out</button>
+        </form>
+      </div>
     </header>
+
     <main class="content">
-      {% with msgs = get_flashed_messages(with_categories=true) %}{% for cat, msg in msgs %}<div class="flash {{ cat }}">{{ msg }}</div>{% endfor %}{% endwith %}
+      {% with msgs = get_flashed_messages(with_categories=true) %}
+        {% for cat, msg in msgs %}
+          <div class="flash {{ cat }}">{{ msg }}</div>
+        {% endfor %}
+      {% endwith %}
       {% block body %}{% endblock %}
     </main>
   </div>
 </div>
+
 {% if role == 'salesman' %}
-<div class="bottomnav">{% for label, ep in nav %}<a href="{{ url_for(ep) }}" class="{{ 'active' if request.endpoint == ep }}">{{ label }}</a>{% endfor %}</div>
+<div class="bottomnav">
+  {% for label, ep in nav %}
+    <a href="{{ url_for(ep) }}" class="{{ 'active' if request.endpoint == ep }}">
+      <span style="font-size: 1.1rem; display:block; margin-bottom: 2px;">{{ nav_icons.get(label, '🔹') }}</span>
+      <span>{{ label }}</span>
+    </a>
+  {% endfor %}
+</div>
 {% endif %}
+
+<script>
+function toggleTheme() {
+  const html = document.documentElement;
+  const current = html.getAttribute('data-theme') || 'light';
+  const target = current === 'dark' ? 'light' : 'dark';
+  html.setAttribute('data-theme', target);
+  localStorage.setItem('oams_theme', target);
+  updateThemeIcon(target);
+}
+
+function updateThemeIcon(theme) {
+  const icon = document.getElementById('themeIcon');
+  if (icon) {
+    icon.textContent = theme === 'dark' ? '☀️' : '🌙';
+  }
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+  const current = document.documentElement.getAttribute('data-theme') || 'light';
+  updateThemeIcon(current);
+});
+</script>
 {% block scripts %}{% endblock %}
 </body>
 </html>
